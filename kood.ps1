@@ -98,10 +98,5 @@ Write-Host "----------------------------------------------------"
 foreach ($k in $kasutajateList) {
     # Võtame kirjeldusest esimesed 10 märki (kontrollime, et string oleks piisavalt pikk)
     $luhikeKirjeldus = if ($k.Kirjeldus.Length -gt 10) { $k.Kirjeldus.Substring(0, 10) } else { $k.Kirjeldus }
-    
-    Write-Host "Nimi:   $($k.Eesnimi) $($k.Perenimi)"
-    Write-Host "User:   $($k.Kasutajanimi)"
-    Write-Host "Pass:   $($k.Parool)"
-    Write-Host "Desc:   $luhikeKirjeldus..."
-    Write-Host "- - -"
+    Write-Host "Nimi: $($k.Eesnimi) $($k.Perenimi) | User: $($k.Kasutajanimi) | Pass: $($k.Parool) | Desc: $luhikeKirjeldus... | - - -"
 }
