@@ -66,13 +66,14 @@ Switch ($valik) {
                 $securePass = ConvertTo-SecureString $paroolPlain -AsPlainText -Force
 
                 # Loome kasutaja
-                # -UserMustChangePassword $true tagab, et sisselogimisel küsitakse uut parooli
                 New-LocalUser -Name $nimi `
                               -FullName $taisnimi `
                               -Description $kirjeldus `
                               -Password $securePass `
-                              -UserMustChangePassword $true `
                               -ErrorAction Stop | Out-Null
+                
+                # Sundime parooli muutmist järgmisel sisselogimisel
+                net user $nimi /logonpasswordchg:yes 2>$null
                 
                 # Kasutaja lisatakse automaatselt gruppi "Users", aga veendume
                 # Add-LocalGroupMember -Group "Users" -Member $nimi -ErrorAction SilentlyContinue
