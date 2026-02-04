@@ -6,7 +6,6 @@ if (-not $isAdmin) {
 }
 
 # --- SEADISTUS ---
-# Veendu, et see fail on samas kaustas kus skript!
 $csvFail = "new_users_accounts.csv"
 $csvOlemas = Test-Path $csvFail
 
@@ -16,7 +15,7 @@ Write-Host "=========================================="
 Write-Host " KASUTAJATE HALDUS (ADMIN)"
 Write-Host "=========================================="
 Write-Host "1. LISA kasutajad failist '$csvFail'"
-Write-Host "2. KUSTUTA üks kasutaja (Valik nimekirjast)"
+Write-Host "2. KUSTUTA üks kasutaja"
 Write-Host "------------------------------------------"
 $valik = Read-Host "Sisesta valik (1 või 2)"
 
@@ -58,14 +57,14 @@ Switch ($valik) {
             try {
                 $securePass = ConvertTo-SecureString $paroolPlain -AsPlainText -Force
 
-                # SIIN ON NÜÜD PUHAS KÄSK ILMA SELLE PARAMEETRITA:
+                # SIIT ON VIGANE RIDA EEMALDATUD:
                 New-LocalUser -Name $nimi `
                               -FullName $taisnimi `
                               -Description $kirjeldus `
                               -Password $securePass `
                               -ErrorAction Stop | Out-Null
                 
-                # See rida teeb parooli muutmise nõude eraldi käsuga:
+                # See rida sunnib parooli vahetama (töötab igas versioonis):
                 net user $nimi /logonpasswordchg:yes 2>$null
 
                 Write-Host "OK: $nimi lisatud. $lisaInfo" -ForegroundColor Green
@@ -81,36 +80,44 @@ Switch ($valik) {
     }
 
     "2" {
-        # --- KASUTAJA KUSTUTAMINE (MUGAVAM VERSIOON) ---
-        Write-Host "`nLaen kasutajate nimekirja..."
+        # --- KASUTAJA KUSTUTAMINE (NUMBRITEGA) ---
+        Write-Host "`n--- Vali number, keda kustutada ---"
         
         $systemUsers = "Administrator", "Guest", "DefaultAccount", "WDAGUtilityAccount"
-        $users = Get-LocalUser | Where-Object { $_.Name -notin $systemUsers }
+        # Teeme nimekirja massiiviks, et saaks numbriga valida
+        $users = @(Get-LocalUser | Where-Object { $_.Name -notin $systemUsers })
         
         if ($users.Count -eq 0) {
             Write-Host "Kustutatavaid kasutajaid ei leitud." -ForegroundColor Yellow
             Break
         }
 
-        # AVAME HÜPIKAKNA
-        Write-Host "Avaneb aken. Vali kasutaja ja vajuta all nurgas 'OK'." -ForegroundColor Cyan
-        $valitudKasutaja = $users | Select-Object Name, FullName, Description | Out-GridView -Title "Vali kasutaja, keda soovid KUSTUTADA ja vajuta OK" -OutputMode Single
+        # Kuvame nimekirja numbritega: 1. Nimi, 2. Nimi jne
+        for ($i = 0; $i -lt $users.Count; $i++) {
+            Write-Host "$($i+1). $($users[$i].Name) ($($users[$i].FullName))"
+        }
 
-        if ($valitudKasutaja) {
+        Write-Host "-----------------------------------"
+        $sisestus = Read-Host "Sisesta number (või vajuta Enter katkestamiseks)"
+
+        if ([string]::IsNullOrWhiteSpace($sisestus)) {
+            Write-Warning "Katkestatud."
+            Break
+        }
+
+        # Kontrollime, kas sisestati number ja kas see on õiges vahemikus
+        if ($sisestus -match "^\d+$" -and [int]$sisestus -ge 1 -and [int]$sisestus -le $users.Count) {
+            $valitudKasutaja = $users[[int]$sisestus - 1]
             $kustutatavNimi = $valitudKasutaja.Name
-            
-            Write-Host "`nValitud kustutamiseks: $kustutatavNimi"
-            
-            $kinnitus = Read-Host "Oled kindel? (Y/N)"
-            if ($kinnitus -ne 'Y' -and $kinnitus -ne 'y') {
-                Write-Warning "Kustutamine katkestatud."
-                Break
-            }
 
+            Write-Host "Valitud: $kustutatavNimi"
+            
             try {
+                # 1. Kustutame kasutaja
                 Remove-LocalUser -Name $kustutatavNimi -ErrorAction Stop
                 Write-Host "Kasutaja '$kustutatavNimi' on süsteemist eemaldatud." -ForegroundColor Green
 
+                # 2. Kustutame kodukausta
                 $homePath = "C:\Users\$kustutatavNimi"
                 if (Test-Path $homePath) {
                     Write-Host "Leiti kodukaust '$homePath', kustutan..." -NoNewline
@@ -123,9 +130,8 @@ Switch ($valik) {
             catch {
                 Write-Error "Viga kustutamisel: $($_.Exception.Message)"
             }
-
         } else {
-            Write-Warning "Kasutajat ei valitud. Kustutamine katkestatud."
+            Write-Warning "Vigane number. Proovi uuesti."
         }
     }
 
