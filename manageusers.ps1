@@ -6,6 +6,7 @@ if (-not $isAdmin) {
 }
 
 # --- SEADISTUS ---
+# Veendu, et see fail on samas kaustas kus skript!
 $csvFail = "new_users_accounts.csv"
 $csvOlemas = Test-Path $csvFail
 
@@ -57,14 +58,14 @@ Switch ($valik) {
             try {
                 $securePass = ConvertTo-SecureString $paroolPlain -AsPlainText -Force
 
+                # SIIN ON NÜÜD PUHAS KÄSK ILMA SELLE PARAMEETRITA:
                 New-LocalUser -Name $nimi `
                               -FullName $taisnimi `
                               -Description $kirjeldus `
                               -Password $securePass `
-                              -UserMustChangePassword $true `
                               -ErrorAction Stop | Out-Null
                 
-                # Sundime parooli muutmist (lisakindlustus)
+                # See rida teeb parooli muutmise nõude eraldi käsuga:
                 net user $nimi /logonpasswordchg:yes 2>$null
 
                 Write-Host "OK: $nimi lisatud. $lisaInfo" -ForegroundColor Green
@@ -83,7 +84,6 @@ Switch ($valik) {
         # --- KASUTAJA KUSTUTAMINE (MUGAVAM VERSIOON) ---
         Write-Host "`nLaen kasutajate nimekirja..."
         
-        # Välistame süsteemikontod
         $systemUsers = "Administrator", "Guest", "DefaultAccount", "WDAGUtilityAccount"
         $users = Get-LocalUser | Where-Object { $_.Name -notin $systemUsers }
         
@@ -92,8 +92,7 @@ Switch ($valik) {
             Break
         }
 
-        # AVAME HÜPIKAKNA VALIKUKS
-        # OutputMode Single tähendab, et saab valida ainult ühe
+        # AVAME HÜPIKAKNA
         Write-Host "Avaneb aken. Vali kasutaja ja vajuta all nurgas 'OK'." -ForegroundColor Cyan
         $valitudKasutaja = $users | Select-Object Name, FullName, Description | Out-GridView -Title "Vali kasutaja, keda soovid KUSTUTADA ja vajuta OK" -OutputMode Single
 
@@ -102,7 +101,6 @@ Switch ($valik) {
             
             Write-Host "`nValitud kustutamiseks: $kustutatavNimi"
             
-            # Küsime igaks juhuks kinnitust konsoolis
             $kinnitus = Read-Host "Oled kindel? (Y/N)"
             if ($kinnitus -ne 'Y' -and $kinnitus -ne 'y') {
                 Write-Warning "Kustutamine katkestatud."
@@ -110,11 +108,9 @@ Switch ($valik) {
             }
 
             try {
-                # 1. Kustutame kasutaja
                 Remove-LocalUser -Name $kustutatavNimi -ErrorAction Stop
                 Write-Host "Kasutaja '$kustutatavNimi' on süsteemist eemaldatud." -ForegroundColor Green
 
-                # 2. Kustutame kodukausta
                 $homePath = "C:\Users\$kustutatavNimi"
                 if (Test-Path $homePath) {
                     Write-Host "Leiti kodukaust '$homePath', kustutan..." -NoNewline
